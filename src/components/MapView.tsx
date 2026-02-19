@@ -23,6 +23,11 @@ interface OnuData {
 interface MapViewProps {
     onus: OnuData[];
     filterStatus: string | null;
+    mapConfig?: {
+        centerLat: number;
+        centerLng: number;
+        zoom: number;
+    };
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -154,7 +159,7 @@ function createClusterIcon(cluster: L.MarkerCluster) {
     });
 }
 
-export default function MapView({ onus, filterStatus }: MapViewProps) {
+export default function MapView({ onus, filterStatus, mapConfig }: MapViewProps) {
     const mapRef = useRef<L.Map | null>(null);
     const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
     const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -165,9 +170,9 @@ export default function MapView({ onus, filterStatus }: MapViewProps) {
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return;
 
-        const centerLat = parseFloat(process.env.NEXT_PUBLIC_MAP_CENTER_LAT || '-6.2088');
-        const centerLng = parseFloat(process.env.NEXT_PUBLIC_MAP_CENTER_LNG || '106.8456');
-        const zoom = parseInt(process.env.NEXT_PUBLIC_MAP_ZOOM || '12');
+        const centerLat = mapConfig?.centerLat ?? -6.2088;
+        const centerLng = mapConfig?.centerLng ?? 106.8456;
+        const zoom = mapConfig?.zoom ?? 12;
 
         const map = L.map(containerRef.current, {
             center: [centerLat, centerLng],

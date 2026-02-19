@@ -15,6 +15,12 @@ export interface DashboardResponse {
         powerFail: number;
         unconfigured: number;
     };
+    mapConfig: {
+        centerLat: number;
+        centerLng: number;
+        zoom: number;
+        refreshInterval: number;
+    };
     timestamp: string;
     isMock: boolean;
 }
@@ -56,6 +62,12 @@ export async function GET() {
         const response: DashboardResponse = {
             onus,
             stats,
+            mapConfig: {
+                centerLat: parseFloat(process.env.NEXT_PUBLIC_MAP_CENTER_LAT || '-6.2088'),
+                centerLng: parseFloat(process.env.NEXT_PUBLIC_MAP_CENTER_LNG || '106.8456'),
+                zoom: parseInt(process.env.NEXT_PUBLIC_MAP_ZOOM || '12', 10),
+                refreshInterval: parseInt(process.env.NEXT_PUBLIC_REFRESH_INTERVAL || '30000', 10),
+            },
             timestamp: new Date().toISOString(),
             isMock,
         };

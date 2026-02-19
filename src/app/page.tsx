@@ -40,6 +40,12 @@ interface DashboardData {
     powerFail: number;
     unconfigured: number;
   };
+  mapConfig: {
+    centerLat: number;
+    centerLng: number;
+    zoom: number;
+    refreshInterval: number;
+  };
   timestamp: string;
   isMock: boolean;
 }
@@ -76,12 +82,10 @@ export default function Home() {
 
   useEffect(() => {
     fetchData();
-    const interval = parseInt(
-      process.env.NEXT_PUBLIC_REFRESH_INTERVAL || '30000'
-    );
+    const interval = data?.mapConfig?.refreshInterval || 30000;
     const timer = setInterval(fetchData, interval);
     return () => clearInterval(timer);
-  }, [fetchData]);
+  }, [fetchData, data?.mapConfig?.refreshInterval]);
 
   // Extract unique OLT names, excluding OLTs where ALL ONUs are Unconfigured
   const oltList = useMemo(() => {
@@ -145,6 +149,7 @@ export default function Home() {
         <MapView
           onus={filteredByOlt}
           filterStatus={filterStatus}
+          mapConfig={data?.mapConfig}
         />
         <Legend />
 
