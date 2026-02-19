@@ -1,36 +1,114 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌐 NOC GIS Network Monitor
 
-## Getting Started
+Real-time GIS dashboard for monitoring ONU/ONT status across your fiber network. Built for NOC passive displays (TV walls, 4K monitors) with live SmartOLT API integration.
 
-First, run the development server:
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
+![Leaflet](https://img.shields.io/badge/Leaflet-1.9-green?logo=leaflet)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)
+
+## ✨ Features
+
+- **Live Map** — Interactive Leaflet map with marker clustering, color-coded by ONU status
+- **SmartOLT Integration** — Fetches ONU statuses, details, zones, GPS coordinates, and unconfigured ONUs
+- **Smart Caching** — Rate-limited endpoints (3 calls/hour) are cached in-memory to stay within API limits
+- **Per-OLT Filtering** — Filter stats and map view by individual OLT
+- **Status Filtering** — Click any stat card to isolate Online, LOS, Power Fail, Offline, or Unconfigured ONUs
+- **5 Themes** — Dark, Midnight, Cyberpunk, Matrix, Light — with map tiles that adapt per theme
+- **Animated Stats** — Numbers animate smoothly on data refresh
+- **4K Optimized** — Responsive layout tuned for 1080p through 4K passive displays
+- **Auto Refresh** — Configurable polling interval (default 30s)
+- **Demo Mode** — Falls back to mock data when no SmartOLT credentials are configured
+
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   ├── api/dashboard/route.ts   # API endpoint — merges SmartOLT data
+│   ├── globals.css              # Full design system with 5 theme palettes
+│   ├── layout.tsx               # Root layout
+│   └── page.tsx                 # Dashboard page with state management
+├── components/
+│   ├── MapView.tsx              # Leaflet map with clustering & theme-aware tiles
+│   ├── StatsBar.tsx             # Top stats bar with animated counters
+│   ├── OltSelector.tsx          # OLT filter pills
+│   ├── Legend.tsx               # Map legend overlay
+│   └── ThemePicker.tsx          # Theme switcher with localStorage persistence
+└── lib/
+    ├── smartolt.ts              # SmartOLT API client with caching strategy
+    ├── cache.ts                 # In-memory TTL cache for rate-limited endpoints
+    └── mock-data.ts             # Mock data generator for demo/dev
+```
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js 18+
+- SmartOLT account with API access (optional — demo mode works without it)
+
+### Installation
+
+```bash
+git clone <repo-url>
+cd noc-gis-monitor
+npm install
+```
+
+### Configuration
+
+Copy `.env.example` to `.env.local` and fill in your values:
+
+```env
+SMARTOLT_BASE_URL=https://your-instance.smartolt.com
+SMARTOLT_API_TOKEN=your-api-token-here
+NEXT_PUBLIC_MAP_CENTER_LAT=-7.5      # Map center latitude
+NEXT_PUBLIC_MAP_CENTER_LNG=112.75    # Map center longitude
+NEXT_PUBLIC_MAP_ZOOM=11              # Initial zoom level
+NEXT_PUBLIC_REFRESH_INTERVAL=30000   # Auto-refresh interval in ms
+```
+
+> **Tip:** Leave `SMARTOLT_BASE_URL` and `SMARTOLT_API_TOKEN` empty to run in demo mode with mock data.
+
+### Run
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🎨 Themes
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Theme | Style | Map Tiles |
+|-------|-------|-----------|
+| 🌑 Dark | Deep navy dark mode | CartoDB Dark Matter |
+| 🌌 Midnight | Indigo-tinted dark | CartoDB Dark Matter |
+| ⚡ Cyber | Purple neon cyberpunk | CartoDB Dark Matter |
+| 🟢 Matrix | Green-on-black terminal | CartoDB Dark Matter |
+| ☀️ Light | Clean light mode | CartoDB Positron |
 
-## Learn More
+Theme selection persists across sessions via `localStorage`.
 
-To learn more about Next.js, take a look at the following resources:
+## 🔌 SmartOLT API Strategy
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The app uses a two-tier fetching strategy to work within SmartOLT's rate limits:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Endpoint | Rate Limit | Cache TTL | Refresh |
+|----------|-----------|-----------|---------|
+| `get_onus_statuses` | Unlimited | None | Every 30s |
+| `get_all_onus_details` | 3/hour | 20 min | On cache miss |
+| `get_all_onus_gps_coordinates` | 3/hour | 20 min | On cache miss |
+| `get_zones` | Unlimited | 30 min | On cache miss |
+| `get_unconfigured_onus` | Unlimited | None | Every 30s |
 
-## Deploy on Vercel
+## 🏗️ Production Build
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run build
+npm start
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📝 License
+
+Private project.
