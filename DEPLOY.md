@@ -81,8 +81,8 @@ Buka di browser: `http://<IP-MESIN>:3000`
 ## 3. Alternatif: Deploy Tanpa Docker (PM2)
 
 ```bash
-# Install Node.js 18
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+# Install Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs
 
 # Clone & setup
