@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import StatsBar from '@/components/StatsBar';
 import OltSelector from '@/components/OltSelector';
 import Legend from '@/components/Legend';
+import ViewModePicker from '@/components/ViewModePicker';
 
 // Dynamic import for Leaflet (SSR incompatible)
 const MapView = dynamic(() => import('@/components/MapView'), {
@@ -65,6 +66,7 @@ export default function Home() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [filterOlt, setFilterOlt] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'clustered' | 'unclustered'>('clustered');
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -150,8 +152,10 @@ export default function Home() {
           onus={filteredByOlt}
           filterStatus={filterStatus}
           mapConfig={data?.mapConfig}
+          viewMode={viewMode}
         />
         <Legend />
+        <ViewModePicker currentMode={viewMode} onChange={setViewMode} />
 
         {error && (
           <div className="error-toast">

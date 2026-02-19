@@ -28,6 +28,7 @@ interface MapViewProps {
         centerLng: number;
         zoom: number;
     };
+    viewMode: 'clustered' | 'unclustered';
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -159,7 +160,7 @@ function createClusterIcon(cluster: L.MarkerCluster) {
     });
 }
 
-export default function MapView({ onus, filterStatus, mapConfig }: MapViewProps) {
+export default function MapView({ onus, filterStatus, mapConfig, viewMode }: MapViewProps) {
     const mapRef = useRef<L.Map | null>(null);
     const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
     const tileLayerRef = useRef<L.TileLayer | null>(null);
@@ -240,31 +241,8 @@ export default function MapView({ onus, filterStatus, mapConfig }: MapViewProps)
             map.removeLayer(clusterGroupRef.current);
         }
 
-        // Create new cluster group
-        const clusterGroup = L.markerClusterGroup({
-            maxClusterRadius: 60,
-            spiderfyOnMaxZoom: true,
-            showCoverageOnHover: false,
-            zoomToBoundsOnClick: true,
-            iconCreateFunction: createClusterIcon,
-            animate: true,
-            animateAddingMarkers: false,
-        });
-
-        const filteredOnus = filterStatus
-            ? onus.filter(o => o.status === filterStatus)
-            : onus;
-
-        for (const onu of filteredOnus) {
-            const icon = createMarkerIcon(onu.status);
-            const marker = L.marker([onu.lat, onu.lng], {
-                icon,
-                status: onu.status,
-            } as L.MarkerOptions & { status: string });
-
-            const statusColor = STATUS_COLORS[onu.status] || '#78909c';
-
-            marker.bindPopup(`
+        // Helper to create popup content
+        const createPopupContent = (onu: OnuData, statusColor: string) => `
         <div style="
           background: var(--popup-bg);
           color: var(--popup-text);
@@ -294,21 +272,80 @@ export default function MapView({ onus, filterStatus, mapConfig }: MapViewProps)
             <div><span style="color: var(--popup-label);">OLT:</span> ${onu.olt_name}</div>
             <div><span style="color: var(--popup-label);">Zone:</span> ${onu.zone}</div>
             ${onu.board != null ? `<div><span style="color: var(--popup-label);">Board/Port:</span> ${onu.board}/${onu.port}</div>` : ''}
-            <div><span style="color: var(--popup-label);">Koordinat:</span> ${onu.lat.toFixed(5)}, ${onu.lng.toFixed(5)}</div>
+            <div style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 8px;">
+               <span style="color: var(--popup-label);">Koordinat:</span> ${onu.lat.toFixed(5)}, ${onu.lng.toFixed(5)}
+               <div style="margin-top: 4px;">
+                 <a href="https://www.google.com/maps/search/?api=1&query=${onu.lat},${onu.lng}" target="_blank" style="color: var(--accent-color); text-decoration: none; font-weight: 600;">
+                   📍 Buka di Google Maps
+                 </a>
+               </div>
+            </div>
           </div>
         </div>
-      `, {
-                className: 'dark-popup',
-                closeButton: true,
-                maxWidth: 300,
+      `;
+
+        const filteredOnus = filterStatus
+            ? onus.filter(o => o.status === filterStatus)
+            : onus;
+
+        // If clustered mode, use MarkerClusterGroup
+        if (viewMode === 'clustered') {
+            const clusterGroup = L.markerClusterGroup({
+                maxClusterRadius: 60,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+                zoomToBoundsOnClick: true,
+                iconCreateFunction: createClusterIcon,
+                animate: true,
+                animateAddingMarkers: false,
             });
 
-            clusterGroup.addLayer(marker);
+            for (const onu of filteredOnus) {
+                const icon = createMarkerIcon(onu.status);
+                const marker = L.marker([onu.lat, onu.lng], {
+                    icon,
+                    status: onu.status,
+                } as L.MarkerOptions & { status: string });
+
+                const statusColor = STATUS_COLORS[onu.status] || '#78909c';
+                marker.bindPopup(createPopupContent(onu, statusColor), {
+                    className: 'dark-popup',
+                    closeButton: true,
+                    maxWidth: 300,
+                });
+
+                clusterGroup.addLayer(marker);
+            }
+            map.addLayer(clusterGroup);
+            clusterGroupRef.current = clusterGroup;
+        }
+        // If unclustered mode, move markers directly to a LayerGroup (no clustering)
+        else {
+            const layerGroup = L.layerGroup();
+
+            for (const onu of filteredOnus) {
+                const icon = createMarkerIcon(onu.status);
+                const marker = L.marker([onu.lat, onu.lng], {
+                    icon,
+                    status: onu.status,
+                } as L.MarkerOptions & { status: string });
+
+                const statusColor = STATUS_COLORS[onu.status] || '#78909c';
+                marker.bindPopup(createPopupContent(onu, statusColor), {
+                    className: 'dark-popup',
+                    closeButton: true,
+                    maxWidth: 300,
+                });
+
+                layerGroup.addLayer(marker);
+            }
+            map.addLayer(layerGroup);
+            // We reuse clusterGroupRef to store this layer so we can remove it later
+            // (rename to layerRef ideally, but casting works for cleanup logic)
+            clusterGroupRef.current = layerGroup as any;
         }
 
-        map.addLayer(clusterGroup);
-        clusterGroupRef.current = clusterGroup;
-    }, [onus, filterStatus, isReady]);
+    }, [onus, filterStatus, isReady, viewMode]);
 
     useEffect(() => {
         updateMarkers();
