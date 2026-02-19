@@ -297,6 +297,7 @@ export async function fetchDashboardData(): Promise<DashboardOnu[]> {
     const centerLng = parseFloat(process.env.NEXT_PUBLIC_MAP_CENTER_LNG || '106.8456');
 
     const dashboard: DashboardOnu[] = [];
+    let fallbackCount = 0;
 
     for (const s of statuses) {
         const detail = detailMap.get(s.sn);
@@ -317,6 +318,7 @@ export async function fetchDashboardData(): Promise<DashboardOnu[]> {
             if (!isNaN(dLat) && !isNaN(dLng) && !(dLat === 0 && dLng === 0)) {
                 lat = dLat;
                 lng = dLng;
+                fallbackCount++;
             } else {
                 const offset = seededOffset(s.sn, 12);
                 lat = centerLat + offset.dlat;
@@ -378,6 +380,7 @@ export async function fetchDashboardData(): Promise<DashboardOnu[]> {
             if (!isNaN(dLat) && !isNaN(dLng) && !(dLat === 0 && dLng === 0)) {
                 lat = dLat;
                 lng = dLng;
+                fallbackCount++;
             } else {
                 const offset = seededOffset(u.sn, 12);
                 lat = centerLat + offset.dlat;
@@ -404,6 +407,10 @@ export async function fetchDashboardData(): Promise<DashboardOnu[]> {
             board: u.board,
             port: u.port,
         });
+    }
+
+    if (fallbackCount > 0) {
+        console.log(`[SmartOLT] Successfully recovered GPS for ${fallbackCount} ONUs using details endpoint`);
     }
 
     return dashboard;
