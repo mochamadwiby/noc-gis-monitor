@@ -182,8 +182,14 @@ export async function fetchUnconfiguredOnus(): Promise<UnconfiguredOnuRaw[]> {
     return raw.response || [];
 }
 
-/** GPS coordinates — 3/hour, cached 20min */
-export async function fetchAllOnuCoordinates(): Promise<OnuCoordinateRaw[]> {
+/** GPS coordinates response — uses 'onus' wrapper like details */
+interface SmartOLTGpsResponse {
+    status: boolean;
+    onus: OnuCoordinateRaw[];
+}
+
+/** GPS coordinates — 3/hour, cached 20min. Falls back to per-OLT fetching on 403 */
+export async function fetchAllOnuCoordinates(oltIds?: string[]): Promise<OnuCoordinateRaw[]> {
     const CACHE_KEY = 'onu_coordinates';
     const cached = cacheGet<OnuCoordinateRaw[]>(CACHE_KEY);
     if (cached) {
@@ -192,15 +198,35 @@ export async function fetchAllOnuCoordinates(): Promise<OnuCoordinateRaw[]> {
     }
 
     console.log('[SmartOLT] Fetching GPS coordinates (rate-limited: 3/hour)...');
-    const raw = await smartoltFetch<SmartOLTResponse<OnuCoordinateRaw[]>>('/api/onu/get_all_onus_gps_coordinates');
-    if (!raw || !raw.status) return [];
 
-    const coords = raw.response || [];
-    if (coords.length > 0) {
-        cacheSet(CACHE_KEY, coords, DETAILS_CACHE_TTL);
-        console.log(`[SmartOLT] Cached ${coords.length} GPS coordinates`);
+    // Try bulk endpoint first
+    const raw = await smartoltFetch<SmartOLTGpsResponse>('/api/onu/get_all_onus_gps_coordinates');
+    if (raw && raw.status && raw.onus && raw.onus.length > 0) {
+        cacheSet(CACHE_KEY, raw.onus, DETAILS_CACHE_TTL);
+        console.log(`[SmartOLT] Cached ${raw.onus.length} GPS coordinates`);
+        return raw.onus;
     }
-    return coords;
+
+    // Fallback: try per-OLT if we have OLT IDs (works when bulk is 403)
+    if (oltIds && oltIds.length > 0) {
+        console.log(`[SmartOLT] Bulk GPS failed, trying per-OLT for ${oltIds.length} OLTs...`);
+        const allCoords: OnuCoordinateRaw[] = [];
+        for (const oltId of oltIds) {
+            const perOlt = await smartoltFetch<SmartOLTGpsResponse>(
+                `/api/onu/get_all_onus_gps_coordinates?olt_id=${oltId}`
+            );
+            if (perOlt && perOlt.status && perOlt.onus) {
+                allCoords.push(...perOlt.onus);
+            }
+        }
+        if (allCoords.length > 0) {
+            cacheSet(CACHE_KEY, allCoords, DETAILS_CACHE_TTL);
+            console.log(`[SmartOLT] Cached ${allCoords.length} GPS coordinates (per-OLT fallback)`);
+        }
+        return allCoords;
+    }
+
+    return [];
 }
 
 // ── Deterministic coordinate spread ──────────────────────────────────
@@ -222,14 +248,19 @@ function seededOffset(seed: string, radiusKm: number): { dlat: number; dlng: num
 // ── Main dashboard merge ─────────────────────────────────────────────
 export async function fetchDashboardData(): Promise<DashboardOnu[]> {
     // Fast path: statuses + unconfigured (always fresh, no rate limit)
-    // Slow path: details + zones + coordinates (cached, rate-limited)
-    const [statuses, unconfigured, details, zones, coordinates] = await Promise.all([
+    // Slow path: details + zones (cached, rate-limited)
+    const [statuses, unconfigured, details, zones] = await Promise.all([
         fetchAllOnuStatuses(),
         fetchUnconfiguredOnus(),
         fetchOnuDetails(),
         fetchZones(),
-        fetchAllOnuCoordinates(),
     ]);
+
+    // Extract unique OLT IDs from details for per-OLT GPS fallback
+    const oltIds = [...new Set(details.map(d => d.olt_id).filter(Boolean))];
+
+    // Fetch GPS coordinates (tries bulk first, falls back to per-OLT)
+    const coordinates = await fetchAllOnuCoordinates(oltIds);
 
     console.log(`[SmartOLT] Merge: ${statuses.length} statuses, ${unconfigured.length} unconfigured, ${details.length} details, ${zones.length} zones, ${coordinates.length} coords`);
 
