@@ -10,6 +10,8 @@ Real-time GIS dashboard for monitoring ONU/ONT status across your fiber network.
 
 - **Live Map** — Interactive Leaflet map with marker clustering, color-coded by ONU status
 - **SmartOLT Integration** — Fetches ONU statuses, details, zones, GPS coordinates, and unconfigured ONUs
+- **Map View Modes** — Toggle between "Clustered" (Grup) for aggregation and "Full Pins" (Titik Asli) for exact locations
+- **GPS Fallback** — Robust coordinate recovery using `details` endpoint if GPS API fails
 - **Smart Caching** — Rate-limited endpoints (3 calls/hour) are cached in-memory to stay within API limits
 - **Per-OLT Filtering** — Filter stats and map view by individual OLT
 - **Status Filtering** — Click any stat card to isolate Online, LOS, Power Fail, Offline, or Unconfigured ONUs
@@ -18,6 +20,11 @@ Real-time GIS dashboard for monitoring ONU/ONT status across your fiber network.
 - **4K Optimized** — Responsive layout tuned for 1080p through 4K passive displays
 - **Auto Refresh** — Configurable polling interval (default 30s)
 - **Demo Mode** — Falls back to mock data when no SmartOLT credentials are configured
+
+## 🛠️ Troubleshooting
+
+- **Map Resetting?** v1.0.3 fixes the zoom reset issue. Maps now stay where you put them during updates.
+- **Missing GPS?** Check debug route `/api/debug-onu?sn=YOUR_SN` to see if fallback logic detects coordinates.
 
 ## 📁 Project Structure
 

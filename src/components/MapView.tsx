@@ -216,18 +216,19 @@ export default function MapView({ onus, filterStatus, mapConfig, viewMode }: Map
         };
     }, []);
 
-    // Update map view when config changes
+    const hasSetInitialView = useRef(false);
+
+    // Update map view when config changes (ONLY INITIAL)
     useEffect(() => {
-        if (!mapRef.current || !mapConfig) return;
+        if (!mapRef.current || !mapConfig || hasSetInitialView.current) return;
 
         const currentCenter = mapRef.current.getCenter();
         const newLat = mapConfig.centerLat;
         const newLng = mapConfig.centerLng;
 
-        // Only fly if distance is significant to avoid jitter
-        if (Math.abs(currentCenter.lat - newLat) > 0.001 || Math.abs(currentCenter.lng - newLng) > 0.001) {
-            mapRef.current.setView([newLat, newLng], mapConfig.zoom);
-        }
+        // Set view only once
+        mapRef.current.setView([newLat, newLng], mapConfig.zoom);
+        hasSetInitialView.current = true;
     }, [mapConfig]);
 
     // Update markers
