@@ -302,12 +302,29 @@ export async function fetchDashboardData(): Promise<DashboardOnu[]> {
         const detail = detailMap.get(s.sn);
         const coord = coordMap.get(s.sn);
 
-        // Coordinates: prefer GPS, else deterministic spread
+        // Coordinates: prefer GPS endpoint > details endpoint > deterministic spread
         let lat: number, lng: number;
+
+        // Check GPS endpoint data
         if (coord) {
             lat = coord.lat;
             lng = coord.lng;
-        } else {
+        }
+        // Check details endpoint data (fallback for specific ONUs)
+        else if (detail && detail.latitude && detail.longitude) {
+            const dLat = parseFloat(detail.latitude as string);
+            const dLng = parseFloat(detail.longitude as string);
+            if (!isNaN(dLat) && !isNaN(dLng) && !(dLat === 0 && dLng === 0)) {
+                lat = dLat;
+                lng = dLng;
+            } else {
+                const offset = seededOffset(s.sn, 12);
+                lat = centerLat + offset.dlat;
+                lng = centerLng + offset.dlng;
+            }
+        }
+        // Fallback to seeded random position
+        else {
             const offset = seededOffset(s.sn, 12);
             lat = centerLat + offset.dlat;
             lng = centerLng + offset.dlng;
@@ -355,6 +372,17 @@ export async function fetchDashboardData(): Promise<DashboardOnu[]> {
         if (coord) {
             lat = coord.lat;
             lng = coord.lng;
+        } else if (detail && detail.latitude && detail.longitude) {
+            const dLat = parseFloat(detail.latitude as string);
+            const dLng = parseFloat(detail.longitude as string);
+            if (!isNaN(dLat) && !isNaN(dLng) && !(dLat === 0 && dLng === 0)) {
+                lat = dLat;
+                lng = dLng;
+            } else {
+                const offset = seededOffset(u.sn, 12);
+                lat = centerLat + offset.dlat;
+                lng = centerLng + offset.dlng;
+            }
         } else {
             const offset = seededOffset(u.sn, 12);
             lat = centerLat + offset.dlat;
