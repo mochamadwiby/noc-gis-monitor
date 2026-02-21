@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ===================================
    NOC GIS Network Monitor
    Dark Theme for 4K Passive Display

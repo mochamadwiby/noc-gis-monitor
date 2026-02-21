@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- AUTHENTICATION ---
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      String   @default("VIEWER") // Roles: ADMIN, DRAFTER, VIEWER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// --- SMARTOLT INTEGRATION ---
+// Read-only mirror for mapping purposes and quick query access
+model SmartOltOnu {
+  id          String    @id // SmartOLT ID
+  sn          String    @unique
+  name        String
+  zone_id     String?
+  zone_name   String?
+  olt_id      String?
+  olt_name    String?
+  status      String?
+  signal      Float?
+  latitude    Float?
+  longitude   Float?
+  last_online DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+// --- PHYSICAL INFRASTRUCTURE ---
+
+model Olt { // Optical Line Terminal (Physical location data, since SmartOLT lacks coordinates)
+  id        String   @id @default(uuid())
+  name      String   @unique
+  latitude  Float
+  longitude Float
+  brand     String?
+  odfs      Odf[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Odf { // Optical Distribution Frame (usually inside NOC, connects to OLT)
+  id        String   @id @default(uuid())
+  name      String   @unique
+  latitude  Float
+  longitude Float
+  capacity  Int      @default(144)
+  oltId     String?
+  olt       Olt?     @relation(fields: [oltId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Otb { // Optical Termination Box / Joint Closure (Splice point in the field)
+  id        String   @id @default(uuid())
+  name      String   @unique
+  latitude  Float
+  longitude Float
+  capacity  Int      @default(24)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Odc {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  latitude  Float
+  longitude Float
+  capacity  Int      @default(144)
+  odps      Odp[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Odp {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  latitude  Float
+  longitude Float
+  capacity  Int      @default(8)
+  odcId     String
+  odc       Odc      @relation(fields: [odcId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Cable {
+  id       String      @id @default(uuid())
+  name     String
+  type     String // "BACKBONE", "DISTRIBUTION", "DROP"
+  capacity Int // Total Cores: 12, 24, 48, 96, 144
+  path     Json // Stored as GeoJSON LineString coordinates
+  cores    CableCore[]
+}
+
+model CableCore {
+  id        String  @id @default(uuid())
+  cableId   String
+  cable     Cable   @relation(fields: [cableId], references: [id])
+  number    Int // Core Number (1-144)
+  color     String // Standard fiber colors (Blue, Orange, Green, Brown...)
+  tubeColor String? // For loose tube cables
+
+  // Endpoint A (Source)
+  startType String? // "OLT", "ODF", "ODC", "OTB", "SPLICE"
+  startId   String?
+
+  // Endpoint B (Destination)
+  endType String? // "ODF", "ODC", "OTB", "ODP", "SPLICE"
+  endId   String?
+}

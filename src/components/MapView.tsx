@@ -27,6 +27,7 @@ interface MapViewProps {
         centerLat: number;
         centerLng: number;
         zoom: number;
+        refreshInterval?: number;
     };
     viewMode: 'clustered' | 'unclustered';
 }
