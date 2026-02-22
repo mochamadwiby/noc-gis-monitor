@@ -63,13 +63,27 @@ NEXT_PUBLIC_MAP_CENTER_LAT=-7.5
 NEXT_PUBLIC_MAP_CENTER_LNG=112.75
 NEXT_PUBLIC_MAP_ZOOM=11
 NEXT_PUBLIC_REFRESH_INTERVAL=30000
+
+# Security (Ubah dengan string acak)
+NEXTAUTH_SECRET=super-secret-key-noc-123
+NEXTAUTH_URL=http://<IP-MESIN>:3000
+
+# Database (Sesuai dengan docker-compose yang akan kita jalankan)
+DATABASE_URL="postgresql://nocadmin:nocpassword@db:5432/noc_db?schema=public"
 ```
 
 ```bash
-# 3. Build & jalankan
+# 3. Jalankan Database terlebih dahulu
+docker compose up -d db
+
+# 4. Push Skema Prisma ke Database
+# (Kita gunakan instance Node temporary untuk npx)
+docker run --rm -v $(pwd):/app -w /app --network noc-gis-monitor_default node:20-alpine sh -c "npx prisma db push"
+
+# 5. Build & jalankan Aplikasi Next.js
 docker compose up -d --build
 
-# 4. Cek status
+# 6. Cek status
 docker compose ps
 docker compose logs -f
 ```
@@ -90,10 +104,15 @@ git clone https://github.com/mochamadwiby/noc-gis-monitor.git
 cd noc-gis-monitor
 git checkout v1.0.0
 cp .env.example .env.local
-nano .env.local   # isi kredensial
+nano .env.local   # isi kredensial & DATABASE_URL (ke localhost:5432)
 
-# Build
+# Siapkan Database
+# Anda harus sudah menginstall PostgreSQL di mesin (contoh: sudo apt install postgresql)
+# Buat database 'noc_db', user 'nocadmin', password 'nocpassword' (sesuaikan dengan .env.local)
+
+# Install Dependencies & Database Push
 npm install
+npx prisma db push
 npm run build
 
 # Install PM2 & jalankan

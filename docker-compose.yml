@@ -5,7 +5,25 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    depends_on:
+      - db
     env_file:
       - .env.local
     environment:
       - NODE_ENV=production
+
+  db:
+    image: postgres:15-alpine
+    container_name: noc-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nocadmin
+      POSTGRES_PASSWORD: nocpassword
+      POSTGRES_DB: noc_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - noc_pgdata:/var/lib/postgresql/data
+
+volumes:
+  noc_pgdata:
