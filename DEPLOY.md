@@ -5,18 +5,18 @@
 ```bash
 # Pastikan semua perubahan sudah di-commit & push
 git add -A
-git commit -m "release: v1.0.0 — production ready"
+git commit -m "release: v2.0.0 — Data Inventory & Auto-DB"
 git push origin master
 
 # Buat tag
-git tag -a v1.0.0 -m "v1.0.0 — stable release"
-git push origin v1.0.0
+git tag -a v2.0.0 -m "v2.0.0 — Data Inventory & Auto-DB"
+git push origin v2.0.0
 ```
 
 Lalu buat Release di GitHub:
 1. Buka https://github.com/mochamadwiby/noc-gis-monitor/releases/new
-2. Pilih tag `v1.0.0`
-3. Title: `v1.0.0 — Stable Release`
+2. Pilih tag `v2.0.0`
+3. Title: `v2.0.0 — Data Inventory & Auto-DB`
 4. Klik **Publish release**
 
 ---
@@ -47,7 +47,7 @@ sudo usermod -aG docker $USER
 # 1. Clone repo
 git clone https://github.com/mochamadwiby/noc-gis-monitor.git
 cd noc-gis-monitor
-git checkout v1.0.0
+git checkout v2.0.0
 
 # 2. Buat file environment
 cp .env.example .env.local
@@ -102,7 +102,7 @@ sudo apt install -y nodejs
 # Clone & setup
 git clone https://github.com/mochamadwiby/noc-gis-monitor.git
 cd noc-gis-monitor
-git checkout v1.0.0
+git checkout v2.0.0
 cp .env.example .env.local
 nano .env.local   # isi kredensial & DATABASE_URL (ke localhost:5432)
 
