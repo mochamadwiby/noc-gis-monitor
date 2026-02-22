@@ -10,23 +10,30 @@ export default function Sidebar() {
 
     const navigation = [
         { name: "Overview", href: "/dashboard", icon: "📊" },
-        { name: "Physical Assets", href: "/dashboard/assets", icon: "🏢" },
-        { name: "Cables Routing", href: "/dashboard/cables", icon: "🔌" },
+        { name: "GIS Map", href: "/dashboard/assets", icon: "🗺️" },
         { name: "SmartOLT Mirror", href: "/dashboard/smartolt", icon: "🌍" },
-        { name: "Users", href: "/dashboard/users", icon: "👥", adminOnly: true },
+    ];
+
+    const inventoryNavigation = [
+        { name: "Assets Inventory", href: "/dashboard/inventory/assets", icon: "🏢" },
+        { name: "Cables Inventory", href: "/dashboard/inventory/cables", icon: "🔌" },
+    ];
+
+    const adminNavigation = [
+        { name: "Users", href: "/dashboard/users", icon: "👥", adminOnly: true }
     ];
 
     return (
-        <div className="flex flex-col w-64 h-screen px-4 py-8 bg-white border-r dark:bg-gray-900 dark:border-gray-700">
-            <h2 className="text-xl font-semibold text-gray-800 dark:text-white">
+        <div className="flex flex-col w-64 h-screen px-4 py-8 bg-card border-r border-border">
+            <h2 className="text-xl font-semibold text-foreground">
                 NOC Admin Panel
             </h2>
 
             <div className="mt-4 mb-8">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-sm font-medium text-muted-foreground">
                     Welcome, {session?.user?.name || session?.user?.email}
                 </p>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 capitalize border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/30 px-2 py-1 rounded w-fit">
+                <p className="text-xs text-primary mt-1 capitalize border border-primary/20 bg-primary/10 px-2 py-1 rounded w-fit">
                     Role: {session?.user?.role || "GUEST"}
                 </p>
             </div>
@@ -34,18 +41,15 @@ export default function Sidebar() {
             <div className="flex flex-col justify-between flex-1 mt-2">
                 <nav className="space-y-2">
                     {navigation.map((item) => {
-                        // Hide admin routes from non-admins
-                        if (item.adminOnly && session?.user?.role !== "ADMIN") return null;
-
-                        const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/dashboard");
+                        const isActive = pathname === item.href || (pathname.startsWith(item.href) && item.href !== "/dashboard" && !pathname.includes("/inventory"));
 
                         return (
                             <Link
                                 key={item.name}
                                 href={item.href}
                                 className={`flex items-center px-4 py-2.5 text-sm font-medium transition-colors rounded-lg ${isActive
-                                    ? "text-blue-700 bg-blue-50 dark:bg-blue-900/50 dark:text-blue-200"
-                                    : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+                                    ? "text-primary bg-primary/10"
+                                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                                     }`}
                             >
                                 <span className="mr-3">{item.icon}</span>
@@ -55,10 +59,61 @@ export default function Sidebar() {
                     })}
                 </nav>
 
-                <div className="pb-4">
+                <div className="mt-8">
+                    <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        Data Inventory
+                    </h3>
+                    <nav className="space-y-2">
+                        {inventoryNavigation.map((item) => {
+                            const isActive = pathname === item.href;
+
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={item.href}
+                                    className={`flex items-center px-4 py-2.5 text-sm font-medium transition-colors rounded-lg ${isActive
+                                        ? "text-primary bg-primary/10"
+                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                                        }`}
+                                >
+                                    <span className="mr-3">{item.icon}</span>
+                                    {item.name}
+                                </Link>
+                            );
+                        })}
+                    </nav>
+                </div>
+
+                <div className="mt-8">
+                    <h3 className="px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                        System
+                    </h3>
+                    <nav className="space-y-2">
+                        {adminNavigation.map((item) => {
+                            if (item.adminOnly && session?.user?.role !== "ADMIN") return null;
+                            const isActive = pathname === item.href;
+
+                            return (
+                                <Link
+                                    key={item.name}
+                                    href={item.href}
+                                    className={`flex items-center px-4 py-2.5 text-sm font-medium transition-colors rounded-lg ${isActive
+                                        ? "text-primary bg-primary/10"
+                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                                        }`}
+                                >
+                                    <span className="mr-3">{item.icon}</span>
+                                    {item.name}
+                                </Link>
+                            );
+                        })}
+                    </nav>
+                </div>
+
+                <div className="pb-4 mt-auto pt-8">
                     <Link
                         href="/"
-                        className="flex items-center px-4 py-2.5 text-sm font-medium transition-colors rounded-lg text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 mb-2"
+                        className="flex items-center px-4 py-2.5 text-sm font-medium transition-colors rounded-lg text-muted-foreground hover:bg-accent hover:text-accent-foreground mb-2"
                     >
                         <span className="mr-3">🗺️</span>
                         Back to Public Map
@@ -66,7 +121,7 @@ export default function Sidebar() {
 
                     <button
                         onClick={() => signOut()}
-                        className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 dark:text-red-400"
+                        className="flex items-center w-full px-4 py-2.5 text-sm font-medium text-destructive transition-colors rounded-lg hover:bg-destructive/10"
                     >
                         <span className="mr-3">🚪</span> Logout
                     </button>

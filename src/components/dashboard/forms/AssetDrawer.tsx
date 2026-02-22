@@ -2,22 +2,21 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AssetType } from "../maps/AdminMapView";
+import { AssetType, AssetNode } from "../maps/AdminMapView";
 
-interface AssetFormProps {
+interface AssetDrawerProps {
     isOpen: boolean;
     onClose: () => void;
-    lat: number;
-    lng: number;
+    asset: AssetNode | null;
     onSuccess: () => void;
 }
 
-export function AssetForm({ isOpen, onClose, lat, lng, onSuccess }: AssetFormProps) {
-    const [type, setType] = useState<AssetType>("ODP");
+export function AssetDrawer({ isOpen, onClose, asset, onSuccess }: AssetDrawerProps) {
     const [name, setName] = useState("");
     const [capacity, setCapacity] = useState("");
     const [brand, setBrand] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [error, setError] = useState("");
 
     // Relationships
@@ -46,54 +45,53 @@ export function AssetForm({ isOpen, onClose, lat, lng, onSuccess }: AssetFormPro
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    useEffect(() => {
+        if (asset) {
+            setName(asset.name || "");
+            setCapacity(asset.capacity ? asset.capacity.toString() : "");
+            setBrand(asset.brand || "");
+
+            // Assume the API might have returned parent IDs or nested objects in future iterations. 
+            // For now, if the asset object has odcId or oltId, set it.
+            if (asset.type === "ODP" && (asset as any).odcId) setOdcId((asset as any).odcId);
+            if (asset.type === "ODP" && (asset as any).odc && (asset as any).odc.id) setOdcId((asset as any).odc.id);
+            if (asset.type === "ODF" && (asset as any).oltId) setOltId((asset as any).oltId);
+            if (asset.type === "ODF" && (asset as any).olt && (asset as any).olt.id) setOltId((asset as any).olt.id);
+
+            setError("");
+        }
+    }, [asset]);
+
+    if (!asset) return null;
+
+    const type = asset.type;
+
+    const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
         setError("");
 
         try {
-            const payload: any = {
-                name,
-                latitude: lat,
-                longitude: lng,
-            };
-
+            const payload: any = { name };
             if (type === "OLT" && brand) payload.brand = brand;
             if (type !== "OLT" && capacity) payload.capacity = parseInt(capacity);
 
-            // Add relations if applicable
-            if (type === "ODF" && oltId) payload.oltId = oltId;
-            if (type === "ODP") {
-                if (!odcId) {
-                    setError("Peringatan: Pembuatan ODP membutuhkan relasi ke Parent ODC. Silakan pilih ODC terlebih dahulu.");
-                    setIsSubmitting(false);
-                    return;
-                }
-                payload.odcId = odcId;
-            }
+            if (type === "ODP" && odcId) payload.odcId = odcId;
+            if (type === "ODF") payload.oltId = oltId || null; // Allow removing OLT relation
 
-            const endpoint = `/api/assets/${type.toLowerCase()}`;
+            const endpoint = `/api/assets/${type.toLowerCase()}/${asset.id}`;
 
             const res = await fetch(endpoint, {
-                method: "POST",
+                method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
 
             const data = await res.json();
-
-            if (!res.ok) throw new Error(data.error || "Gagal menyimpan data");
+            if (!res.ok) throw new Error(data.error || "Gagal mengupdate data");
 
             onSuccess();
             onClose();
-
-            // Reset form
-            setName("");
-            setCapacity("");
-            setBrand("");
-            setOdcId("");
-            setOltId("");
-
         } catch (err: any) {
             setError(err.message);
         } finally {
@@ -101,43 +99,49 @@ export function AssetForm({ isOpen, onClose, lat, lng, onSuccess }: AssetFormPro
         }
     };
 
+    const handleDelete = async () => {
+        if (!confirm(`Are you sure you want to delete this ${type}?`)) return;
+
+        setIsDeleting(true);
+        setError("");
+
+        try {
+            const endpoint = `/api/assets/${type.toLowerCase()}/${asset.id}`;
+            const res = await fetch(endpoint, { method: "DELETE" });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Gagal menghapus data");
+
+            onSuccess();
+            onClose();
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                    <DialogTitle>Buat Asset Baru</DialogTitle>
+                    <DialogTitle>Edit Asset: {type}</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleUpdate} className="space-y-4">
                     {error && <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">{error}</div>}
 
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Coordinate</label>
                         <div className="flex gap-4">
-                            <Input value={lat.toFixed(6)} readOnly disabled className="bg-gray-100 dark:bg-gray-800" />
-                            <Input value={lng.toFixed(6)} readOnly disabled className="bg-gray-100 dark:bg-gray-800" />
+                            <Input value={asset.latitude.toFixed(6)} readOnly disabled className="bg-gray-100 dark:bg-gray-800" />
+                            <Input value={asset.longitude.toFixed(6)} readOnly disabled className="bg-gray-100 dark:bg-gray-800" />
                         </div>
-                    </div>
-
-                    <div>
-                        <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Jenis Asset</label>
-                        <select
-                            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
-                            value={type}
-                            onChange={(e) => setType(e.target.value as AssetType)}
-                        >
-                            <option value="OLT">OLT (Pusat Server)</option>
-                            <option value="ODF">ODF (Rak Distribusi)</option>
-                            <option value="OTB">OTB / Joint Box</option>
-                            <option value="ODC">ODC (Lemari Distribusi)</option>
-                            <option value="ODP">ODP (Titik Tiang)</option>
-                        </select>
                     </div>
 
                     <div>
                         <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nama / Kode Asset</label>
                         <Input
                             required
-                            placeholder="Misal: ODC-01-SDA"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                         />
@@ -145,9 +149,8 @@ export function AssetForm({ isOpen, onClose, lat, lng, onSuccess }: AssetFormPro
 
                     {type === "OLT" ? (
                         <div>
-                            <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Merek Tipe (Opsional)</label>
+                            <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Merek Tipe</label>
                             <Input
-                                placeholder="ZTE C320"
                                 value={brand}
                                 onChange={(e) => setBrand(e.target.value)}
                             />
@@ -157,7 +160,6 @@ export function AssetForm({ isOpen, onClose, lat, lng, onSuccess }: AssetFormPro
                             <label className="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Kapasitas Core</label>
                             <Input
                                 type="number"
-                                placeholder={type === 'ODC' || type === 'ODF' ? "144" : type === 'OTB' ? '24' : '8'}
                                 value={capacity}
                                 onChange={(e) => setCapacity(e.target.value)}
                             />
@@ -197,11 +199,16 @@ export function AssetForm({ isOpen, onClose, lat, lng, onSuccess }: AssetFormPro
                         </div>
                     )}
 
-                    <DialogFooter className="mt-6">
-                        <Button type="button" variant="secondary" onClick={onClose}>Batal</Button>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting ? "Menyimpan..." : "Simpan Asset"}
+                    <DialogFooter className="mt-6 flex justify-between w-full sm:justify-between items-center">
+                        <Button type="button" variant="destructive" onClick={handleDelete} disabled={isDeleting || isSubmitting}>
+                            {isDeleting ? "Menghapus..." : "Hapus Asset"}
                         </Button>
+                        <div className="flex space-x-2">
+                            <Button type="button" variant="secondary" onClick={onClose}>Batal</Button>
+                            <Button type="submit" disabled={isSubmitting || isDeleting}>
+                                {isSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </form>
             </DialogContent>

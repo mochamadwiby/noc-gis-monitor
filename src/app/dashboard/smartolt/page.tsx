@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import SyncButton from "./sync-button";
-import { Card, CardHeader, Badge } from "@/components/dashboard/ui";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export const metadata = {
     title: "SmartOLT Mirror - NOC GIS Monitor",
@@ -33,7 +34,7 @@ export default async function SmartOltPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
+                <Card className="p-6">
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                         Total Synced ONUs
                     </p>
@@ -41,7 +42,7 @@ export default async function SmartOltPage() {
                         {onuCount.toLocaleString('id-ID')}
                     </p>
                 </Card>
-                <Card>
+                <Card className="p-6">
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                         Online Status
                     </p>
@@ -54,7 +55,7 @@ export default async function SmartOltPage() {
                 </Card>
             </div>
 
-            <Card noPadding className="overflow-hidden">
+            <Card className="overflow-hidden">
                 <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-700">
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                         Recently Synced Records
@@ -96,9 +97,11 @@ export default async function SmartOltPage() {
                                         </td>
                                         <td className="px-6 py-4">
                                             <Badge variant={
-                                                onu.status === 'Online' ? 'success' :
-                                                    onu.status === 'LOS' ? 'danger' :
-                                                        onu.status === 'Power fail' ? 'warning' : 'default'
+                                                onu.status === 'Online' ? 'default' :
+                                                    onu.status === 'LOS' ? 'destructive' : 'secondary'
+                                            } className={
+                                                onu.status === 'Online' ? 'bg-green-500 hover:bg-green-600' :
+                                                    onu.status === 'Power fail' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : ''
                                             }>
                                                 {onu.status || 'Unknown'}
                                             </Badge>

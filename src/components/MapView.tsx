@@ -20,8 +20,30 @@ interface OnuData {
     port?: string;
 }
 
+export type AssetType = "OLT" | "ODF" | "OTB" | "ODC" | "ODP";
+
+export interface AssetNode {
+    id: string;
+    name: string;
+    type: AssetType;
+    latitude: number;
+    longitude: number;
+    capacity?: number;
+    brand?: string;
+}
+
+export interface CablePath {
+    id: string;
+    name: string;
+    type: "BACKBONE" | "DISTRIBUTION" | "DROP";
+    capacity: number;
+    path: [number, number][];
+}
+
 interface MapViewProps {
     onus: OnuData[];
+    assets?: AssetNode[];
+    cables?: CablePath[];
     filterStatus: string | null;
     mapConfig?: {
         centerLat: number;
@@ -161,9 +183,11 @@ function createClusterIcon(cluster: L.MarkerCluster) {
     });
 }
 
-export default function MapView({ onus, filterStatus, mapConfig, viewMode }: MapViewProps) {
+export default function MapView({ onus, assets = [], cables = [], filterStatus, mapConfig, viewMode }: MapViewProps) {
     const mapRef = useRef<L.Map | null>(null);
-    const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
+    const clusterGroupRef = useRef<L.MarkerClusterGroup | L.LayerGroup | null>(null);
+    const assetsLayerRef = useRef<L.LayerGroup | null>(null);
+    const cablesLayerRef = useRef<L.LayerGroup | null>(null);
     const tileLayerRef = useRef<L.TileLayer | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [isReady, setIsReady] = useState(false);
@@ -343,15 +367,114 @@ export default function MapView({ onus, filterStatus, mapConfig, viewMode }: Map
             }
             map.addLayer(layerGroup);
             // We reuse clusterGroupRef to store this layer so we can remove it later
-            // (rename to layerRef ideally, but casting works for cleanup logic)
             clusterGroupRef.current = layerGroup as any;
         }
 
     }, [onus, filterStatus, isReady, viewMode]);
 
+    // Update physical assets and cables
+    const updateInfrastructure = useCallback(() => {
+        if (!mapRef.current || !isReady) return;
+        const map = mapRef.current;
+
+        // Clean up old layers
+        if (assetsLayerRef.current) map.removeLayer(assetsLayerRef.current);
+        if (cablesLayerRef.current) map.removeLayer(cablesLayerRef.current);
+
+        const assetsGroup = L.layerGroup();
+        const cablesGroup = L.layerGroup();
+
+        // 1. Assets
+        const getMarkerColor = (type: AssetType) => {
+            const colors = { OLT: "#9c27b0", ODF: "#e91e63", OTB: "#00bcd4", ODC: "#ff9800", ODP: "#4caf50" };
+            return colors[type];
+        };
+
+        const createCustomAssetMarker = (type: AssetType) => {
+            const bg = getMarkerColor(type);
+            return L.divIcon({
+                className: "custom-asset-marker",
+                html: `
+            <div style="
+              width: 24px; height: 24px; 
+              background: ${bg}; 
+              border: 2px solid white; 
+              border-radius: 50%;
+              box-shadow: 0 0 8px rgba(0,0,0,0.4);
+              display: flex; align-items: center; justify-content: center;
+              color: white; font-size: 10px; font-weight: bold; font-family: sans-serif;
+            ">
+              ${type.substring(0, 2)}
+            </div>
+          `,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12],
+            });
+        };
+
+        assets.forEach((asset) => {
+            const marker = L.marker([asset.latitude, asset.longitude], {
+                icon: createCustomAssetMarker(asset.type)
+            });
+
+            marker.bindPopup(`
+                <div class="dark-popup font-sans p-2">
+                    <span style="font-size: 10px; font-weight: bold; color: gray; text-transform: uppercase;">${asset.type}</span>
+                    <strong style="display: block; margin-top: 2px;">${asset.name}</strong>
+                    <div style="margin-top: 6px; font-size: 12px; color: #ccc;">
+                        <div>Capacity: ${asset.capacity || 'N/A'}</div>
+                        ${asset.brand ? `<div>Brand: ${asset.brand}</div>` : ''}
+                    </div>
+                </div>
+            `);
+            assetsGroup.addLayer(marker);
+        });
+
+        // 2. Cables
+        const getCableColor = (type: string) => {
+            const colors: Record<string, string> = { BACKBONE: "#e53935", DISTRIBUTION: "#1e88e5", DROP: "#43a047" };
+            return colors[type] || "#ffffff";
+        };
+        const getCableWeight = (type: string) => {
+            const weights: Record<string, number> = { BACKBONE: 5, DISTRIBUTION: 4, DROP: 3 };
+            return weights[type] || 3;
+        };
+
+        cables.forEach((cable) => {
+            const polyline = L.polyline(cable.path, {
+                color: getCableColor(cable.type),
+                weight: getCableWeight(cable.type),
+                opacity: 0.8
+            });
+
+            polyline.bindPopup(`
+                <div class="dark-popup font-sans p-2">
+                    <span style="font-size: 10px; font-weight: bold; color: gray; text-transform: uppercase;">Kabel ${cable.type}</span>
+                    <strong style="display: block; margin-top: 2px;">${cable.name}</strong>
+                    <div style="margin-top: 6px; font-size: 12px; color: #ccc;">
+                        <div>Capacity: ${cable.capacity} Core</div>
+                        <div>Points: ${cable.path.length} span</div>
+                    </div>
+                </div>
+            `);
+            cablesGroup.addLayer(polyline);
+        });
+
+        map.addLayer(assetsGroup);
+        map.addLayer(cablesGroup);
+
+        assetsLayerRef.current = assetsGroup;
+        cablesLayerRef.current = cablesGroup;
+
+    }, [assets, cables, isReady]);
+
     useEffect(() => {
         updateMarkers();
     }, [updateMarkers]);
+
+    useEffect(() => {
+        updateInfrastructure();
+    }, [updateInfrastructure]);
 
     return (
         <div

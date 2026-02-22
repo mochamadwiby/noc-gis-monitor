@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/dashboard/ui";
+import { Button } from "@/components/ui/button";
 
 export default function SyncButton() {
     const router = useRouter();
@@ -42,8 +42,7 @@ export default function SyncButton() {
             )}
             <Button
                 onClick={handleSync}
-                isLoading={loading}
-                variant="primary"
+                disabled={loading}
                 className="shadow-sm shadow-blue-500/20"
             >
                 {!loading && <span className="mr-2">🔄</span>}

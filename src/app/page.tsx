@@ -18,6 +18,26 @@ const MapView = dynamic(() => import('@/components/MapView'), {
   ),
 });
 
+export type AssetType = "OLT" | "ODF" | "OTB" | "ODC" | "ODP";
+
+export interface AssetNode {
+  id: string;
+  name: string;
+  type: AssetType;
+  latitude: number;
+  longitude: number;
+  capacity?: number;
+  brand?: string;
+}
+
+export interface CablePath {
+  id: string;
+  name: string;
+  type: "BACKBONE" | "DISTRIBUTION" | "DROP";
+  capacity: number;
+  path: [number, number][]; // LatLng tuple array
+}
+
 interface OnuData {
   id: string;
   sn: string;
@@ -33,6 +53,8 @@ interface OnuData {
 
 interface DashboardData {
   onus: OnuData[];
+  assets: AssetNode[];
+  cables: CablePath[];
   stats: {
     total: number;
     online: number;
@@ -150,6 +172,8 @@ export default function Home() {
       <div className="map-wrapper">
         <MapView
           onus={filteredByOlt}
+          assets={data?.assets || []}
+          cables={data?.cables || []}
           filterStatus={filterStatus}
           mapConfig={data?.mapConfig}
           viewMode={viewMode}

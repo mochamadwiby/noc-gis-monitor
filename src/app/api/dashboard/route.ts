@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { fetchDashboardData, DashboardOnu } from '@/lib/smartolt';
 import { generateMockData } from '@/lib/mock-data';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export interface DashboardResponse {
     onus: DashboardOnu[];
+    assets: any[];
+    cables: any[];
     stats: {
         total: number;
         online: number;
@@ -59,8 +62,22 @@ export async function GET() {
             unconfigured: onus.filter(o => o.status === 'Unconfigured').length,
         };
 
+        // Fetch physical assets and cables
+        const [olts, odfs, otbs, odcs, odps, cables] = await Promise.all([
+            prisma.olt.findMany().then(res => res.map(i => ({ ...i, type: 'OLT' }))),
+            prisma.odf.findMany().then(res => res.map(i => ({ ...i, type: 'ODF' }))),
+            prisma.otb.findMany().then(res => res.map(i => ({ ...i, type: 'OTB' }))),
+            prisma.odc.findMany().then(res => res.map(i => ({ ...i, type: 'ODC' }))),
+            prisma.odp.findMany().then(res => res.map(i => ({ ...i, type: 'ODP' }))),
+            prisma.cable.findMany(),
+        ]);
+
+        const assets = [...olts, ...odfs, ...otbs, ...odcs, ...odps];
+
         const response: DashboardResponse = {
             onus,
+            assets,
+            cables,
             stats,
             mapConfig: {
                 centerLat: parseFloat(process.env.NEXT_PUBLIC_MAP_CENTER_LAT || '-6.2088'),
